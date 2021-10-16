@@ -68,9 +68,9 @@ jobs:
         run: |
             echo "frontend:" ${{ fromJSON(needs.build.outputs.frontend_changed) }}
             echo "backend:" ${{ fromJSON(needs.build.outputs.backend_changed) }}
-      - name: fail the build
-        run: |
-            exit 1
+      # - name: fail the build
+      #   run: |
+      #       exit 1
   
   fe_build:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
@@ -110,8 +110,13 @@ jobs:
     steps:
       - name: log if changed files
         run: |
-            echo completed
+            echo completed 
+      - uses: lwhiteley/dependent-jobs-result-check@v1
+        id: check_statuses
+        with:
+          statuses: failure,cancelled # valid options: failure,cancelled,skipped,success
+          dependencies: ${{toJSON(needs)}}
       - name: consider failing build
-        if: contains(needs.fe_build_extra.result , 'failure') || contains(needs.fe_build_extra.result , 'cancelled') || contains(needs.be_build_extra.result, 'failure') || contains(needs.be_build_extra.result, 'cancelled') || contains(needs.be_build.result, 'failure') || contains(needs.be_build.result, 'cancelled')
+        if: fromJSON(steps.check_statuses.outputs.found)
         run: |
             exit 1
