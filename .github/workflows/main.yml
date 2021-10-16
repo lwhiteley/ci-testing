@@ -1,7 +1,7 @@
 name: main
 
 concurrency: 
-  group: ${{ github.head_ref }}
+  group: main-${{ github.head_ref }}
   cancel-in-progress: true
 
 on:
