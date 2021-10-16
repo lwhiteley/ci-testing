@@ -1,5 +1,9 @@
 name: main
 
+concurrency: 
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -8,10 +12,14 @@ on:
     branches:
       - main
 
+# Init workflowj
 jobs:
   build:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
-    name: Test changed-files
+    name: check-changed-files
+    outputs:
+      frontend_changed: ${{ steps.frontend_changed.outputs.has_changes }}
+      backend_changed: ${{ steps.backend_changed.outputs.has_changes }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -32,13 +40,83 @@ jobs:
             frontend
 
       - name: List all backend changes files
+        id: backend_changed
         run: |
-          for file in ${{ steps.backend_changes.outputs.all_changed_and_modified_files }}; do
-            echo "$file was modified"
-          done
+          if [[  -n "${{ steps.backend_changes.outputs.all_changed_and_modified_files }}" ]]; then 
+            echo ::set-output name=has_changes::${{ toJSON(true) }}
+          else
+            echo ::set-output name=has_changes::${{ toJSON(false) }}
+           fi
 
       - name: List all frontend changes files
+        id: frontend_changed
         run: |
-          for file in ${{ steps.frontend_changes.outputs.all_changed_and_modified_files }}; do
-            echo "$file was modified"
-          done
+          if [[ -n "${{ steps.frontend_changes.outputs.all_changed_and_modified_files }}" ]]; then 
+            echo ::set-output name=has_changes::${{ toJSON(true) }}
+          else
+            echo ::set-output name=has_changes::${{ toJSON(false) }}
+           fi
+
+  be_build:
+    runs-on: ubuntu-latest  # windows-latest | macos-latest
+    name: check if be changed
+    if: ${{ fromJSON(needs.build.outputs.backend_changed) }}
+    needs: build
+    steps:
+      - name: log if changed files
+        id: backend_changes
+        run: |
+            echo "frontend:" ${{ fromJSON(needs.build.outputs.frontend_changed) }}
+            echo "backend:" ${{ fromJSON(needs.build.outputs.backend_changed) }}
+      # - name: fail the build
+      #   run: |
+      #       exit 1
+  
+  fe_build:
+    runs-on: ubuntu-latest  # windows-latest | macos-latest
+    name: check if fe changed
+    needs: build
+    if: ${{ fromJSON(needs.build.outputs.frontend_changed) }}
+    steps:
+      - name: log if changed files
+        id: backend_changes
+        run: |
+            echo "frontend:" ${{ fromJSON(needs.build.outputs.frontend_changed) }}
+            echo "backend:" ${{ fromJSON(needs.build.outputs.backend_changed) }}
+
+  be_build_extra:
+    runs-on: ubuntu-latest  # windows-latest | macos-latest
+    name: be extra run
+    needs: [be_build]
+    steps:
+      - name: log if changed files
+        run: |
+            echo completed
+  fe_build_extra:
+    runs-on: ubuntu-latest  # windows-latest | macos-latest
+    name: fe extra run 
+    needs: [fe_build]
+    steps:
+      - name: log if changed files
+        run: |
+            echo completed
+  
+  # Aggregate build results for required builds 
+  main-completion-status:
+    runs-on: ubuntu-latest  # windows-latest | macos-latest
+    name: alert changed
+    needs: [fe_build_extra, be_build_extra, be_build]
+    if: always()
+    steps:
+      - name: log if changed files
+        run: |
+            echo completed 
+      - uses: lwhiteley/dependent-jobs-result-check@v1
+        id: check_statuses
+        with:
+          statuses: failure,cancelled # valid options: failure,cancelled,skipped,success
+          dependencies: ${{toJSON(needs)}}
+      - name: consider failing build
+        if: fromJSON(steps.check_statuses.outputs.found)
+        run: |
+            exit 1
