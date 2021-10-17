@@ -14,9 +14,9 @@ on:
 
 # Init workflowj
 jobs:
-  build:
+  check_changed_files:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
-    name: check-changed-files
+    name: check changed files
     outputs:
       frontend_changed: ${{ steps.frontend_changed.outputs.has_changes }}
       backend_changed: ${{ steps.backend_changed.outputs.has_changes }}
@@ -57,11 +57,15 @@ jobs:
             echo ::set-output name=has_changes::${{ toJSON(false) }}
            fi
 
+  docker:
+    needs: check_changed_files
+    uses: lwhiteley/ci-testing/.github/workflows/docker.yml@main
+
   be_build:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: check if be changed
     if: ${{ fromJSON(needs.build.outputs.backend_changed) }}
-    needs: build
+    needs: check_changed_files
     steps:
       - name: log if changed files
         id: backend_changes
@@ -75,7 +79,7 @@ jobs:
   fe_build:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: check if fe changed
-    needs: build
+    needs: check_changed_files
     if: ${{ fromJSON(needs.build.outputs.frontend_changed) }}
     steps:
       - name: log if changed files
@@ -102,10 +106,10 @@ jobs:
             echo completed
   
   # Aggregate build results for required builds 
-  main-completion-status:
+  main_completion_status:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: alert changed
-    needs: [fe_build_extra, be_build_extra, be_build]
+    needs: [fe_build_extra, be_build_extra, be_build, docker]
     if: always()
     steps:
       - name: log if changed files

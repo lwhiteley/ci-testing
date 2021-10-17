@@ -1,0 +1,36 @@
+name: Reusable workflow example
+
+on:
+  workflow_call:
+    inputs:
+      username:
+        required: false
+        type: string
+    secrets:
+      token:
+        required: false
+
+jobs:
+  init:
+    name: init
+    runs-on: ubuntu-latest
+    steps:
+      - name: init somerthing
+        run: |
+          echo something done
+  fe_docker:
+    name: fe docker
+    needs: init
+    runs-on: ubuntu-latest
+    steps:
+      - name: Do somerthing fe
+        run: |
+          echo something done
+  be_docker:
+    name: be docker
+    needs: init
+    runs-on: ubuntu-latest
+    steps:
+      - name: Do somerthing be
+        run: |
+          echo something done
