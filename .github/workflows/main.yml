@@ -14,7 +14,7 @@ on:
 
 # Init workflowj
 jobs:
-  check_changed_files:
+  build:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: check changed files
     outputs:
@@ -58,14 +58,14 @@ jobs:
            fi
 
   docker:
-    needs: check_changed_files
+    needs: build
     uses: lwhiteley/ci-testing/.github/workflows/docker.yml@main
 
   be_build:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: check if be changed
     if: ${{ fromJSON(needs.build.outputs.backend_changed) }}
-    needs: check_changed_files
+    needs: build
     steps:
       - name: log if changed files
         id: backend_changes
@@ -79,7 +79,7 @@ jobs:
   fe_build:
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: check if fe changed
-    needs: check_changed_files
+    needs: build
     if: ${{ fromJSON(needs.build.outputs.frontend_changed) }}
     steps:
       - name: log if changed files
