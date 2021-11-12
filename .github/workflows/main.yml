@@ -21,6 +21,13 @@ jobs:
       frontend_changed: ${{ steps.frontend_changed.outputs.has_changes }}
       backend_changed: ${{ steps.backend_changed.outputs.has_changes }}
     steps:
+      - name: echo stuff
+        run: |
+          echo $GITHUB_REF_NAME
+          echo ${GITHUB_REF#refs/heads/}
+          branch=${GITHUB_HEAD_REF:-GITHUB_REF_NAME}
+          echo $branch
+
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
